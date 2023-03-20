@@ -11,6 +11,8 @@ Can detect if text already exists or if variable already exists
 Can create th:text if it detects it's only text within the tag
     Otherwise it creates a span with remove tag
 
+![thymeleaf-i18n-helper demo](demo/i18n-helper-demo.gif)
+
 ## Requirements
 
 - Spring boot with thymeleaf and properties files
@@ -27,6 +29,6 @@ Still early version and experimental
 
 ## Release Notes
 
-### 1.0.0
+### 0.0.1
 
-Initial release
+Initial pre-release
