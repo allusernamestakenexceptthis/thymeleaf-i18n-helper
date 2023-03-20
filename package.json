@@ -17,6 +17,7 @@
     "workspaceContains:**/*.properties"
   ],
   "main": "./dist/extension.js",
+  "icon": "demo/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/allusernamestakenexceptthis/thymeleaf-i18n-helper"
