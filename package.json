@@ -6,6 +6,8 @@
   "engines": {
     "vscode": "^1.76.0"
   },
+  "pricing": "Free",
+  "publisher": "gomilkyway",
   "categories": [
     "Other"
   ],
@@ -15,6 +17,10 @@
     "workspaceContains:**/*.properties"
   ],
   "main": "./dist/extension.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/allusernamestakenexceptthis/thymeleaf-i18n-helper"
+  },
   "contributes": {
     "configuration": {
         "type": "object",
