@@ -7,36 +7,27 @@ import { getLanguageManager } from '../extension';
 export class IndexerManager {
 
     private messages: { [key: string]: {[key: string] : string} } = {};
+    
     private watcher: vscode.FileSystemWatcher | undefined;
+    private configWatcher: vscode.Disposable  | undefined;
+
     private context: vscode.ExtensionContext;
     private cachedFileLanguage: { [key: string]: string } = {};
+
+    private oldDirectory: string = "";
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
 
     async activate() {
-        const workspaceRoot = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
-        if (!workspaceRoot) {
-            return;
+
+        this.startFreshScan();
+        this.watchConfig();
+
+        if (!this.watcher) {
+            this.watcher = vscode.workspace.createFileSystemWatcher('**/*.properties');
         }
-
-        let messagesFolder = vscode.workspace.getConfiguration().get<string>(extensionID+'.folder');
-        
-        if (!messagesFolder) {
-            messagesFolder = "";
-        }
-
-        messagesFolder = path.join(workspaceRoot, messagesFolder);
-        if (!fs.existsSync(messagesFolder)) {
-            return;
-        }
-        this.scanDirectory(messagesFolder);
-
-        this.watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(messagesFolder, '**/*.properties')
-
-        );
 
         this.context.subscriptions.push(
             this.watcher,
@@ -50,6 +41,64 @@ export class IndexerManager {
                 this.removeMessage(e.fsPath);
             })
         );
+    }
+
+    //watch config changes
+    watchConfig() {
+        this.configWatcher = vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration(`${extensionID}.exclude`) ||
+                e.affectsConfiguration(`${extensionID}.folder`) ||
+                e.affectsConfiguration('files.exclude')
+            ) {
+                this.startFreshScan();
+            }
+        });
+
+        this.context.subscriptions.push(this.configWatcher);
+    }
+
+    getConfigFolder(){
+        const workspaceRoot = vscode.workspace.workspaceFolders![0]!.uri.fsPath;
+        if (!workspaceRoot) {
+            return "";
+        }
+
+        let messagesFolder = vscode.workspace.getConfiguration().get<string>(extensionID+'.folder');
+        
+        if (!messagesFolder) {
+            messagesFolder = "";
+        }
+
+        messagesFolder = path.normalize(messagesFolder.trim());
+
+        if (!path.isAbsolute(messagesFolder)) {
+            messagesFolder = path.join(workspaceRoot, messagesFolder);
+        }
+        if (!fs.existsSync(messagesFolder)) {
+            return "";
+        }
+        return messagesFolder;
+    }
+
+    startFreshScan() {
+        //delete messages
+        this.messages = {};
+
+        const directory = this.getConfigFolder();
+        if (!directory) {
+            return;
+        }
+        if (!this.oldDirectory || this.oldDirectory !== directory) {
+            if (this.watcher) {
+                this.watcher.dispose();
+            }
+            this.watcher = vscode.workspace.createFileSystemWatcher(
+                new vscode.RelativePattern(directory, '**/*.properties')
+            );
+
+            this.oldDirectory = directory;
+        }
+        this.scanDirectory(directory);
     }
 
     scanDirectory(directory: string) {
@@ -137,10 +186,19 @@ export class IndexerManager {
     }
 
     checkIfFilenameIsExcluded(filename: string, uri: string) {
+        const messagesFolder = this.getConfigFolder();
+        if (!messagesFolder) {
+            return true;
+        }
+        if (!uri.startsWith(messagesFolder)) {
+            return true;
+        }
+
         const excludedFoldersSettings = vscode.workspace.getConfiguration().get<string[]>(extensionID+'.exclude');
         if (!excludedFoldersSettings){
             return false;
         }
+        
         for (const pattern of excludedFoldersSettings) {
             if (filename.match(pattern) || uri.match(pattern)) {
                 return true;
